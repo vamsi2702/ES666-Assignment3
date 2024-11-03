@@ -32,22 +32,18 @@ class PanaromaStitcher:
         return out
 
     def get_homography(self, p1, p2):
-        m = []
-        
+        A = []
         for i in range(len(p1)):
-            x, y = p1[i][0], p1[i][1]
-            u, v = p2[i][0], p2[i][1]
-            
-            r1 = [x, y, 1, 0, 0, 0, -u * x, -u * y, -u]
-            r2 = [0, 0, 0, x, y, 1, -v * x, -v * y, -v]
-            
-            m.extend([r1, r2])
-            
-        m = np.array(m)
-        _, _, v = np.linalg.svd(m)
-        h = v[-1].reshape((3, 3))
+            x, y = p1[i]
+            x_prime, y_prime = p2[i]
+            A.append([-x, -y, -1, 0, 0, 0, x * x_prime, y * x_prime, x_prime])
+            A.append([0, 0, 0, -x, -y, -1, x * y_prime, y * y_prime, y_prime])
         
-        return h
+        A = np.array(A)
+        U, S, V = np.linalg.svd(A)
+        H = V[-1].reshape((3, 3))
+
+        return H
 
     def ransac_homography(self, p1, p2, max_iter=2000):
         thresh = 5
@@ -75,7 +71,7 @@ class PanaromaStitcher:
             best_h = self.get_homography(p1[best_inliers], p2[best_inliers])
             
         return best_h, best_inliers
-
+    
     def match_images(self, img1, img2):
         sift = cv2.SIFT_create()
         kp1, des1 = sift.detectAndCompute(img1, None)
@@ -156,3 +152,7 @@ class PanaromaStitcher:
         pano = self.blend_images(cyl_imgs, H_final, out_size, mid)
         
         return pano, H
+    
+
+
+    
