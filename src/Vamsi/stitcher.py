@@ -46,7 +46,7 @@ class PanaromaStitcher:
         return H
 
     def ransac_homography(self, p1, p2, max_iter=2000):
-        thresh = 5
+        thresh = 6
         best_h = None
         best_inliers = []
         max_inliers = 0
@@ -77,9 +77,9 @@ class PanaromaStitcher:
         kp1, des1 = sift.detectAndCompute(img1, None)
         kp2, des2 = sift.detectAndCompute(img2, None)
         
-        flann = cv2.FlannBasedMatcher(dict(algorithm=1, trees=5), dict(checks=50))
+        flann = cv2.FlannBasedMatcher(dict(algorithm=1, trees=6), dict(checks=50))
         matches = flann.knnMatch(des1, des2, k=2)
-        good = [m for m, n in matches if m.distance < 0.75 * n.distance]
+        good = [m for m, n in matches if m.distance < 0.65 * n.distance]
 
         if len(good) < 4:
             print("Not enough matches")
@@ -129,12 +129,18 @@ class PanaromaStitcher:
                 pano[mask] = warp[mask]
                 
         return pano
-
+    def calculate_focal_length(self, img):
+        w, h = img.shape[1], img.shape[0]
+        aspect_ratio = w / h
+        
+        # Base on width but consider aspect ratio
+        f = w / (2 * np.pi) * 8 * np.sqrt(aspect_ratio)
+        return f
     def make_panaroma_for_images_in(self, path):
         # Load and project images
         imgs = [cv2.imread(f) for f in sorted(glob.glob(path + os.sep + '*'))]
         mid = len(imgs) // 2
-        f = imgs[mid].shape[1] / (2 * np.pi) * 8
+        f = self.calculate_focal_length(imgs[mid])
         cyl_imgs = [self.project_cylindrical(img, f) for img in imgs]
         
         # Get homographies
